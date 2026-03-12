@@ -1,0 +1,10 @@
+---
+acl:
+  name: "GUEST-TO-DC"
+  apply_interfaces:
+    - "interface Ethernet1"
+    - "interface Ethernet2"
+  lines:
+    - "10 permit ip {{ guest_subnet }} 10.10.1.0/24"
+    - "20 permit ip {{ guest_subnet }} 10.10.2.0/24"
+    - "30 deny ip {{ guest_subnet }} any"

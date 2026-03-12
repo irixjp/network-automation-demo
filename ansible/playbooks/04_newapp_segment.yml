@@ -1,0 +1,74 @@
+---
+- name: Evidence Repo - Prepare (clean clone)
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    git_ssh_command: >-
+      ssh -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -i {{ git_evidence.ssh_key }}
+  tasks:
+    - name: Prepare evidence repository (clean clone)
+      ansible.builtin.import_tasks: includes/git_evidence_prepare.yml
+
+- name: New App Segment - DC East/West leafs
+  hosts: dce-leaf2:dcw-leaf2
+  gather_facts: no
+  vars:
+    dc_site: "{{ inventory_hostname.split('-')[0] }}"
+    leaf_intf: "{{ newapp[dc_site].intf }}"
+    gw_ip: "{{ newapp[dc_site].gw }}"
+  tasks:
+    - name: Configure leaf interface for new app subnet
+      arista.eos.eos_config:
+        lines:
+          - "no shutdown"
+          - "no switchport"
+          - "ip address {{ gw_ip }}"
+        parents: "interface {{ leaf_intf }}"
+
+- name: New App Segment - Evidence collection
+  hosts: dce-leaf2:dcw-leaf2
+  gather_facts: no
+  vars:
+    dc_site: "{{ inventory_hostname.split('-')[0] }}"
+    leaf_intf: "{{ newapp[dc_site].intf }}"
+  tasks:
+    - name: Run new app evidence commands
+      arista.eos.eos_command:
+        commands: "{{ evidence_commands.routers }}"
+      register: sh
+
+    - name: Ensure evidence directory
+      ansible.builtin.file:
+        path: "{{ artifacts_dir }}/{{ inventory_hostname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Save evidence output
+      ansible.builtin.copy:
+        dest: "{{ artifacts_dir }}/{{ inventory_hostname }}/show.txt"
+        content: |
+          ## {{ inventory_hostname }}
+          {% for c in sh.stdout %}
+          ---
+          {{ c }}
+          {% endfor %}
+      delegate_to: localhost
+
+- name: New App Segment - Push evidence to git
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    git_commit_ts: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+    git_commit_message: "{{ git_evidence.commit_prefix }}04_newapp_segment: {{ git_commit_ts }}"
+    git_ssh_command: >-
+      ssh -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -i {{ git_evidence.ssh_key }}
+  tasks:
+    - name: Push evidence repository (newapp)
+      ansible.builtin.import_tasks: includes/git_evidence_push.yml

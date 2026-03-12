@@ -1,0 +1,5 @@
+zebra=yes
+bgpd=yes
+staticd=yes
+mgmtd=yes
+watchfrr=yes

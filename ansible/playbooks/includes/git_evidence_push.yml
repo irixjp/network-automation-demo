@@ -1,0 +1,37 @@
+---
+- name: Stage evidence files
+  ansible.builtin.command:
+    cmd: git add -A
+    chdir: "{{ git_evidence.repo_dir }}"
+  environment:
+    GIT_SSH_COMMAND: "{{ git_ssh_command }}"
+
+- name: Check staged changes
+  ansible.builtin.command:
+    cmd: git status --porcelain
+    chdir: "{{ git_evidence.repo_dir }}"
+  register: git_status
+  changed_when: false
+  environment:
+    GIT_SSH_COMMAND: "{{ git_ssh_command }}"
+
+- name: Commit evidence changes
+  ansible.builtin.command:
+    cmd: "git commit -m \"{{ git_commit_message }}\""
+    chdir: "{{ git_evidence.repo_dir }}"
+  when: git_status.stdout != ""
+  environment:
+    GIT_SSH_COMMAND: "{{ git_ssh_command }}"
+
+- name: Push evidence changes
+  ansible.builtin.command:
+    cmd: "git push -u origin {{ git_evidence.branch }}"
+    chdir: "{{ git_evidence.repo_dir }}"
+  when: git_status.stdout != ""
+  environment:
+    GIT_SSH_COMMAND: "{{ git_ssh_command }}"
+
+- name: Skip push when no changes
+  ansible.builtin.debug:
+    msg: "No evidence changes to commit for {{ git_commit_message }}"
+  when: git_status.stdout == ""

@@ -1,0 +1,269 @@
+name: ansible-enterprise-demo
+mgmt:
+  network: clab-mgmt
+  ipv4-subnet: 172.20.20.0/24
+topology:
+  kinds:
+    arista_ceos:
+      image: ceos:4.35.1F
+    linux:
+      image: wbitt/network-multitool
+  nodes:
+    dce-spine1:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.11
+      startup-config: configs/dce-spine1.cfg
+      ports:
+        - 44301:443
+    dce-spine2:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.12
+      startup-config: configs/dce-spine2.cfg
+      ports:
+        - 44302:443
+    dce-leaf1:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.13
+      startup-config: configs/dce-leaf1.cfg
+      ports:
+        - 44303:443
+    dce-leaf2:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.14
+      startup-config: configs/dce-leaf2.cfg
+      ports:
+        - 44304:443
+    dce-edge1:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.15
+      startup-config: configs/dce-edge1.cfg
+      ports:
+        - 44305:443
+    dcw-spine1:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.21
+      startup-config: configs/dcw-spine1.cfg
+      ports:
+        - 44306:443
+    dcw-spine2:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.22
+      startup-config: configs/dcw-spine2.cfg
+      ports:
+        - 44307:443
+    dcw-leaf1:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.23
+      startup-config: configs/dcw-leaf1.cfg
+      ports:
+        - 44308:443
+    dcw-leaf2:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.24
+      startup-config: configs/dcw-leaf2.cfg
+      ports:
+        - 44309:443
+    dcw-edge1:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.25
+      startup-config: configs/dcw-edge1.cfg
+      ports:
+        - 44310:443
+    br1-rtr:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.31
+      startup-config: configs/br1-rtr.cfg
+      ports:
+        - 44311:443
+    br2-rtr:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.32
+      startup-config: configs/br2-rtr.cfg
+      ports:
+        - 44312:443
+    br3-rtr:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.33
+      startup-config: configs/br3-rtr.cfg
+      ports:
+        - 44313:443
+    wan1:
+      kind: linux
+      image: quay.io/frrouting/frr:10.2.5
+      mgmt-ipv4: 172.20.20.41
+      binds:
+        - wan/wan1-frr.conf:/etc/frr/frr.conf
+        - wan/wan1-bootstrap.sh:/bootstrap.sh
+        - wan/daemons:/etc/frr/daemons
+        - wan/vtysh.conf:/etc/frr/vtysh.conf
+      cmd: "/bin/sh /bootstrap.sh"
+    wan2:
+      kind: linux
+      image: quay.io/frrouting/frr:10.2.5
+      mgmt-ipv4: 172.20.20.42
+      binds:
+        - wan/wan2-frr.conf:/etc/frr/frr.conf
+        - wan/wan2-bootstrap.sh:/bootstrap.sh
+        - wan/daemons:/etc/frr/daemons
+        - wan/vtysh.conf:/etc/frr/vtysh.conf
+      cmd: "/bin/sh /bootstrap.sh"
+    dce-corp-srv:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.101
+      binds:
+        - hosts/dce-corp-srv/bootstrap.sh:/bootstrap.sh
+    dce-app-srv:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.102
+      binds:
+        - hosts/dce-app-srv/bootstrap.sh:/bootstrap.sh
+    dce-newapp-srv:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.103
+      binds:
+        - hosts/dce-newapp-srv/bootstrap.sh:/bootstrap.sh
+    dcw-corp-srv:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.111
+      binds:
+        - hosts/dcw-corp-srv/bootstrap.sh:/bootstrap.sh
+    dcw-app-srv:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.112
+      binds:
+        - hosts/dcw-app-srv/bootstrap.sh:/bootstrap.sh
+    dcw-newapp-srv:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.113
+      binds:
+        - hosts/dcw-newapp-srv/bootstrap.sh:/bootstrap.sh
+    br1-client:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.121
+      binds:
+        - hosts/br1-client/bootstrap.sh:/bootstrap.sh
+    br1-guest-client:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.124
+      binds:
+        - hosts/br1-guest-client/bootstrap.sh:/bootstrap.sh
+    br1-deadman:
+      kind: linux
+      image: deadman-ssh:latest
+      mgmt-ipv4: 172.20.20.125
+      env:
+        PUID: "1000"
+        PGID: "1000"
+        TZ: "Etc/UTC"
+        USER_NAME: "demo"
+        USER_PASSWORD: "demo"
+        PASSWORD_ACCESS: "true"
+      binds:
+        - hosts/br1-deadman:/config
+      exec:
+        - ip link set eth1 up
+        - ip addr add 10.110.101.20/24 dev eth1
+        - ip route replace default via 10.110.101.1
+    br2-client:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.122
+      binds:
+        - hosts/br2-client/bootstrap.sh:/bootstrap.sh
+    br3-client:
+      kind: linux
+      image: net-ssh:latest
+      mgmt-ipv4: 172.20.20.123
+      binds:
+        - hosts/br3-client/bootstrap.sh:/bootstrap.sh
+    br1-sw:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.131
+      startup-config: configs/br1-sw.cfg
+      ports:
+        - 44314:443
+
+    br2-sw:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.132
+      startup-config: configs/br2-sw.cfg
+      ports:
+        - 44315:443
+
+    br3-sw:
+      kind: arista_ceos
+      mgmt-ipv4: 172.20.20.133
+      startup-config: configs/br3-sw.cfg
+      ports:
+        - 44316:443
+
+    git-server:
+      kind: linux
+      image: git-ssh:latest
+      mgmt-ipv4: 172.20.20.200
+      env:
+        GIT_PASSWORD: "git"
+      binds:
+        - hosts/git-server:/config
+
+  links:
+    # --- DC East fabric ---
+    - endpoints: ["dce-spine1:eth1", "dce-leaf1:eth1"]
+    - endpoints: ["dce-spine1:eth2", "dce-leaf2:eth1"]
+    - endpoints: ["dce-spine2:eth1", "dce-leaf1:eth2"]
+    - endpoints: ["dce-spine2:eth2", "dce-leaf2:eth2"]
+
+    # Border Leaf (dce-edge1) dual-homed to spines (spine eth3 used for border)
+    - endpoints: ["dce-spine1:eth3", "dce-edge1:eth1"]
+    - endpoints: ["dce-spine2:eth3", "dce-edge1:eth2"]
+
+    # --- DC West fabric ---
+    - endpoints: ["dcw-spine1:eth1", "dcw-leaf1:eth1"]
+    - endpoints: ["dcw-spine1:eth2", "dcw-leaf2:eth1"]
+    - endpoints: ["dcw-spine2:eth1", "dcw-leaf1:eth2"]
+    - endpoints: ["dcw-spine2:eth2", "dcw-leaf2:eth2"]
+
+    # Border Leaf (dcw-edge1) dual-homed to spines
+    - endpoints: ["dcw-spine1:eth3", "dcw-edge1:eth1"]
+    - endpoints: ["dcw-spine2:eth3", "dcw-edge1:eth2"]
+
+    # --- WAN/Branches ---
+    - endpoints: ["wan1:eth1", "wan2:eth1"]
+    - endpoints: ["dce-edge1:eth3", "wan1:eth2"]
+    - endpoints: ["dce-edge1:eth4", "wan2:eth2"]
+    - endpoints: ["dcw-edge1:eth3", "wan1:eth3"]
+    - endpoints: ["dcw-edge1:eth4", "wan2:eth3"]
+    - endpoints: ["br1-rtr:eth1", "wan1:eth4"]
+    - endpoints: ["br1-rtr:eth2", "wan2:eth4"]
+    - endpoints: ["br2-rtr:eth1", "wan1:eth5"]
+    - endpoints: ["br2-rtr:eth2", "wan2:eth5"]
+    - endpoints: ["br3-rtr:eth1", "wan1:eth6"]
+    - endpoints: ["br3-rtr:eth2", "wan2:eth6"]
+
+    # --- Servers ---
+    - endpoints: ["dce-leaf1:eth3", "dce-corp-srv:eth1"]
+    - endpoints: ["dce-leaf2:eth3", "dce-app-srv:eth1"]
+    - endpoints: ["dce-leaf2:eth4", "dce-newapp-srv:eth1"]
+    - endpoints: ["dcw-leaf1:eth3", "dcw-corp-srv:eth1"]
+    - endpoints: ["dcw-leaf2:eth3", "dcw-app-srv:eth1"]
+    - endpoints: ["dcw-leaf2:eth4", "dcw-newapp-srv:eth1"]
+
+    # --- Branch LAN (VLAN via branch switch) ---
+    - endpoints: ["br1-client:eth1", "br1-sw:eth1"]
+    - endpoints: ["br1-guest-client:eth1", "br1-sw:eth3"]
+    - endpoints: ["br1-deadman:eth1", "br1-sw:eth4"]
+    - endpoints: ["br1-rtr:eth3",   "br1-sw:eth2"]
+
+    - endpoints: ["br2-client:eth1", "br2-sw:eth1"]
+    - endpoints: ["br2-rtr:eth3",    "br2-sw:eth2"]
+
+    - endpoints: ["br3-client:eth1", "br3-sw:eth1"]
+    - endpoints: ["br3-rtr:eth3",    "br3-sw:eth2"]

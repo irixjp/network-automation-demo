@@ -1,0 +1,7 @@
+bgpd=yes
+zebra=yes
+ospfd=no
+isisd=no
+ripd=no
+pimd=no
+staticd=yes

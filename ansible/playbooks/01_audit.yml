@@ -1,0 +1,98 @@
+---
+- name: Evidence Repo - Prepare (clean clone)
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    git_ssh_command: >-
+      ssh -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -i {{ git_evidence.ssh_key }}
+  tasks:
+    - name: Prepare evidence repository (clean clone)
+      ansible.builtin.import_tasks: includes/git_evidence_prepare.yml
+
+- name: Audit - Collect running-config (Routers)
+  hosts: eos_routers
+  gather_facts: no
+  tasks:
+    - name: Run show running-config sanitized
+      arista.eos.eos_command:
+        commands: "{{ evidence_commands.routers }}"
+      register: sh
+
+    - name: Ensure artifacts base dir
+      ansible.builtin.file:
+        path: "{{ artifacts_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Ensure artifacts directory
+      ansible.builtin.file:
+        path: "{{ artifacts_dir }}/{{ inventory_hostname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Save audit output
+      ansible.builtin.copy:
+        dest: "{{ artifacts_dir }}/{{ inventory_hostname }}/show.txt"
+        content: |
+          ## {{ inventory_hostname }}
+          {% for c in sh.stdout %}
+          ---
+          {{ c }}
+          {% endfor %}
+      delegate_to: localhost
+
+- name: Audit - Collect running-config (Switches)
+  hosts: eos_switches
+  gather_facts: no
+  tasks:
+    - name: Run show running-config sanitized
+      arista.eos.eos_command:
+        commands: "{{ evidence_commands.switches }}"
+      register: sh
+
+    - name: Ensure artifacts base dir
+      ansible.builtin.file:
+        path: "{{ artifacts_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Ensure artifacts directory
+      ansible.builtin.file:
+        path: "{{ artifacts_dir }}/{{ inventory_hostname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Save audit output
+      ansible.builtin.copy:
+        dest: "{{ artifacts_dir }}/{{ inventory_hostname }}/show.txt"
+        content: |
+          ## {{ inventory_hostname }}
+          {% for c in sh.stdout %}
+          ---
+          {{ c }}
+          {% endfor %}
+      delegate_to: localhost
+
+- name: Audit - Push evidence to git
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    git_commit_ts: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+    git_commit_message: "{{ git_evidence.commit_prefix }}01_audit: {{ git_commit_ts }}"
+    git_ssh_command: >-
+      ssh -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -i {{ git_evidence.ssh_key }}
+  tasks:
+    - name: Push evidence repository (audit)
+      ansible.builtin.import_tasks: includes/git_evidence_push.yml

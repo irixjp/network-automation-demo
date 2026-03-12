@@ -1,0 +1,163 @@
+---
+- name: Evidence Repo - Prepare (clean clone)
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    git_ssh_command: >-
+      ssh -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -i {{ git_evidence.ssh_key }}
+  tasks:
+    - name: Prepare evidence repository (clean clone)
+      ansible.builtin.import_tasks: includes/git_evidence_prepare.yml
+
+- name: Branch VLAN - Switches
+  hosts: eos_switches
+  gather_facts: no
+  vars:
+    site: "{{ inventory_hostname.split('-')[0] }}"
+    corp_vlan_id: "{{ branch_vlan.corp_vlan }}"
+    guest_vlan_id: "{{ branch_vlan.guest_vlan }}"
+    exp_corp_vlan_id: "{{ branch_vlan_expansion.corp_vlan }}"
+    exp_guest_vlan_id: "{{ branch_vlan_expansion.guest_vlan }}"
+    exp_corp_vlan_name: "{{ branch_vlan_expansion.corp_name }}"
+    exp_guest_vlan_name: "{{ branch_vlan_expansion.guest_name }}"
+  tasks:
+    - name: Ensure CORP VLAN
+      arista.eos.eos_config:
+        lines:
+          - "name CORP"
+        parents: "vlan {{ corp_vlan_id }}"
+
+    - name: Ensure GUEST VLAN
+      arista.eos.eos_config:
+        lines:
+          - "name GUEST"
+        parents: "vlan {{ guest_vlan_id }}"
+
+    - name: Ensure CORP extension VLAN
+      arista.eos.eos_config:
+        lines:
+          - "name {{ exp_corp_vlan_name }}"
+        parents: "vlan {{ exp_corp_vlan_id }}"
+
+    - name: Ensure GUEST extension VLAN
+      arista.eos.eos_config:
+        lines:
+          - "name {{ exp_guest_vlan_name }}"
+        parents: "vlan {{ exp_guest_vlan_id }}"
+
+    - name: Ensure client access port
+      arista.eos.eos_config:
+        lines:
+          - "switchport"
+          - "switchport mode access"
+          - "switchport access vlan {{ corp_vlan_id }}"
+          - "spanning-tree portfast"
+          - "no shutdown"
+        parents: "interface Ethernet1"
+
+    - name: Ensure trunk to branch router
+      arista.eos.eos_config:
+        lines:
+          - "switchport"
+          - "switchport mode trunk"
+          - "switchport trunk allowed vlan {{ corp_vlan_id }},{{ guest_vlan_id }},{{ exp_corp_vlan_id }},{{ exp_guest_vlan_id }}"
+          - "no shutdown"
+        parents: "interface Ethernet2"
+
+- name: Branch VLAN - Routers
+  hosts: branches
+  gather_facts: no
+  vars:
+    site: "{{ inventory_hostname.split('-')[0] }}"
+    corp_vlan_id: "{{ branch_vlan.corp_vlan }}"
+    guest_vlan_id: "{{ branch_vlan.guest_vlan }}"
+    corp_prefix: "{{ branch_vlan[site].corp.subnet.split('/')[1] }}"
+    guest_prefix: "{{ branch_vlan[site].guest.subnet.split('/')[1] }}"
+    exp_corp_vlan_id: "{{ branch_vlan_expansion.corp_vlan }}"
+    exp_guest_vlan_id: "{{ branch_vlan_expansion.guest_vlan }}"
+    exp_corp_prefix: "{{ branch_vlan_expansion[site].corp.subnet.split('/')[1] }}"
+    exp_guest_prefix: "{{ branch_vlan_expansion[site].guest.subnet.split('/')[1] }}"
+  tasks:
+    - name: Ensure router subinterface trunk base
+      arista.eos.eos_config:
+        lines:
+          - "no switchport"
+          - "no shutdown"
+        parents: "interface Ethernet3"
+
+    - name: Ensure CORP SVI on branch router
+      arista.eos.eos_config:
+        lines:
+          - "encapsulation dot1q vlan {{ corp_vlan_id }}"
+          - "ip address {{ branch_vlan[site].corp.gw }}/{{ corp_prefix }}"
+        parents: "interface Ethernet3.{{ corp_vlan_id }}"
+
+    - name: Ensure GUEST SVI on branch router
+      arista.eos.eos_config:
+        lines:
+          - "encapsulation dot1q vlan {{ guest_vlan_id }}"
+          - "ip address {{ branch_vlan[site].guest.gw }}/{{ guest_prefix }}"
+        parents: "interface Ethernet3.{{ guest_vlan_id }}"
+
+    - name: Ensure CORP extension SVI on branch router
+      arista.eos.eos_config:
+        lines:
+          - "encapsulation dot1q vlan {{ exp_corp_vlan_id }}"
+          - "ip address {{ branch_vlan_expansion[site].corp.gw }}/{{ exp_corp_prefix }}"
+        parents: "interface Ethernet3.{{ exp_corp_vlan_id }}"
+
+    - name: Ensure GUEST extension SVI on branch router
+      arista.eos.eos_config:
+        lines:
+          - "encapsulation dot1q vlan {{ exp_guest_vlan_id }}"
+          - "ip address {{ branch_vlan_expansion[site].guest.gw }}/{{ exp_guest_prefix }}"
+        parents: "interface Ethernet3.{{ exp_guest_vlan_id }}"
+
+- name: Branch VLAN - Evidence collection
+  hosts: branches:eos_switches
+  gather_facts: no
+  vars:
+    evidence_cmds: >-
+      {{ evidence_commands.routers if inventory_hostname in groups['branches']
+         else evidence_commands.switches }}
+  tasks:
+    - name: Run VLAN/L3 evidence commands
+      arista.eos.eos_command:
+        commands: "{{ evidence_cmds }}"
+      register: sh
+
+    - name: Ensure evidence directory
+      ansible.builtin.file:
+        path: "{{ artifacts_dir }}/{{ inventory_hostname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+
+    - name: Save evidence output
+      ansible.builtin.copy:
+        dest: "{{ artifacts_dir }}/{{ inventory_hostname }}/show.txt"
+        content: |
+          ## {{ inventory_hostname }}
+          {% for c in sh.stdout %}
+          ---
+          {{ c }}
+          {% endfor %}
+      delegate_to: localhost
+
+- name: Branch VLAN - Push evidence to git
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    git_commit_ts: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+    git_commit_message: "{{ git_evidence.commit_prefix }}02_branch_vlan: {{ git_commit_ts }}"
+    git_ssh_command: >-
+      ssh -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
+      -i {{ git_evidence.ssh_key }}
+  tasks:
+    - name: Push evidence repository (branch vlan)
+      ansible.builtin.import_tasks: includes/git_evidence_push.yml
