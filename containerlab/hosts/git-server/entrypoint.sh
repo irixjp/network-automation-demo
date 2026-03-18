@@ -6,12 +6,6 @@ REPO_PATH="/srv/git/ansible-evidence.git"
 
 echo "git:${GIT_PASSWORD}" | chpasswd
 
-if [ -f /config/authorized_keys ]; then
-  install -d -m 700 /home/git/.ssh
-  install -m 600 /config/authorized_keys /home/git/.ssh/authorized_keys
-  chown -R git:git /home/git/.ssh
-fi
-
 ssh-keygen -A
 
 if [ ! -d "${REPO_PATH}" ]; then
@@ -27,8 +21,7 @@ HostKey /etc/ssh/ssh_host_ecdsa_key
 HostKey /etc/ssh/ssh_host_ed25519_key
 PermitRootLogin no
 PasswordAuthentication yes
-PubkeyAuthentication yes
-AuthorizedKeysFile .ssh/authorized_keys
+PubkeyAuthentication no
 AllowUsers git
 UsePAM no
 ChallengeResponseAuthentication no

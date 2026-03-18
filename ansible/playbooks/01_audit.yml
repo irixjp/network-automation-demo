@@ -5,9 +5,8 @@
   gather_facts: no
   vars:
     git_ssh_command: >-
-      ssh -o StrictHostKeyChecking=no
+      sshpass -e ssh -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
-      -i {{ git_evidence.ssh_key }}
   tasks:
     - name: Prepare evidence repository (clean clone)
       ansible.builtin.import_tasks: includes/git_evidence_prepare.yml
@@ -90,9 +89,8 @@
     git_commit_ts: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
     git_commit_message: "{{ git_evidence.commit_prefix }}01_audit: {{ git_commit_ts }}"
     git_ssh_command: >-
-      ssh -o StrictHostKeyChecking=no
+      sshpass -e ssh -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
-      -i {{ git_evidence.ssh_key }}
   tasks:
     - name: Push evidence repository (audit)
       ansible.builtin.import_tasks: includes/git_evidence_push.yml

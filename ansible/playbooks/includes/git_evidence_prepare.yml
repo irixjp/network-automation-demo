@@ -1,10 +1,3 @@
----
-- name: Ensure git SSH key permissions
-  ansible.builtin.file:
-    path: "{{ git_evidence.ssh_key }}"
-    state: file
-    mode: "0600"
-
 - name: Remove existing evidence directory
   ansible.builtin.file:
     path: "{{ git_evidence.repo_dir }}"
@@ -14,6 +7,7 @@
   ansible.builtin.command:
     cmd: "git clone {{ git_evidence.repo_url }} {{ git_evidence.repo_dir }}"
   environment:
+    SSHPASS: "{{ git_evidence.ssh_password }}"
     GIT_SSH_COMMAND: "{{ git_ssh_command }}"
 
 - name: Checkout branch
@@ -21,6 +15,7 @@
     cmd: "git checkout -B {{ git_evidence.branch }}"
     chdir: "{{ git_evidence.repo_dir }}"
   environment:
+    SSHPASS: "{{ git_evidence.ssh_password }}"
     GIT_SSH_COMMAND: "{{ git_ssh_command }}"
 
 - name: Configure git identity
@@ -31,4 +26,5 @@
     - { key: "user.name", value: "{{ git_evidence.user_name }}" }
     - { key: "user.email", value: "{{ git_evidence.user_email }}" }
   environment:
+    SSHPASS: "{{ git_evidence.ssh_password }}"
     GIT_SSH_COMMAND: "{{ git_ssh_command }}"

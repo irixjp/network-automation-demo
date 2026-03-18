@@ -149,12 +149,6 @@ topology:
       mgmt-ipv4: 172.20.20.121
       binds:
         - hosts/br1-client/bootstrap.sh:/bootstrap.sh
-    br1-guest-client:
-      kind: linux
-      image: net-ssh:latest
-      mgmt-ipv4: 172.20.20.124
-      binds:
-        - hosts/br1-guest-client/bootstrap.sh:/bootstrap.sh
     br1-deadman:
       kind: linux
       image: deadman-ssh:latest
@@ -258,7 +252,6 @@ topology:
 
     # --- Branch LAN (VLAN via branch switch) ---
     - endpoints: ["br1-client:eth1", "br1-sw:eth1"]
-    - endpoints: ["br1-guest-client:eth1", "br1-sw:eth3"]
     - endpoints: ["br1-deadman:eth1", "br1-sw:eth4"]
     - endpoints: ["br1-rtr:eth3",   "br1-sw:eth2"]
 

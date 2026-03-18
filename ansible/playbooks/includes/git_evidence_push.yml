@@ -4,6 +4,7 @@
     cmd: git add -A
     chdir: "{{ git_evidence.repo_dir }}"
   environment:
+    SSHPASS: "{{ git_evidence.ssh_password }}"
     GIT_SSH_COMMAND: "{{ git_ssh_command }}"
 
 - name: Check staged changes
@@ -13,6 +14,7 @@
   register: git_status
   changed_when: false
   environment:
+    SSHPASS: "{{ git_evidence.ssh_password }}"
     GIT_SSH_COMMAND: "{{ git_ssh_command }}"
 
 - name: Commit evidence changes
@@ -21,6 +23,7 @@
     chdir: "{{ git_evidence.repo_dir }}"
   when: git_status.stdout != ""
   environment:
+    SSHPASS: "{{ git_evidence.ssh_password }}"
     GIT_SSH_COMMAND: "{{ git_ssh_command }}"
 
 - name: Push evidence changes
@@ -29,6 +32,7 @@
     chdir: "{{ git_evidence.repo_dir }}"
   when: git_status.stdout != ""
   environment:
+    SSHPASS: "{{ git_evidence.ssh_password }}"
     GIT_SSH_COMMAND: "{{ git_ssh_command }}"
 
 - name: Skip push when no changes

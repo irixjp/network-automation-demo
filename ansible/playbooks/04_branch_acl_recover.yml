@@ -5,14 +5,13 @@
   gather_facts: no
   vars:
     git_ssh_command: >-
-      ssh -o StrictHostKeyChecking=no
+      sshpass -e ssh -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
-      -i {{ git_evidence.ssh_key }}
   tasks:
     - name: Prepare evidence repository (clean clone)
       ansible.builtin.import_tasks: includes/git_evidence_prepare.yml
 
-- name: Branch ACL - Recover (staged allow)
+- name: Branch ACL - Policy switch
   hosts: branches
   gather_facts: no
   vars:
@@ -44,7 +43,7 @@
         var: acl.lines
 
   tasks:
-    - name: Replace ACL with staged rules
+    - name: Replace ACL with selected policy rules
       arista.eos.eos_config:
         before:
           - "no ip access-list {{ acl.name }}"
@@ -106,11 +105,10 @@
   gather_facts: no
   vars:
     git_commit_ts: "{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
-    git_commit_message: "{{ git_evidence.commit_prefix }}05_branch_acl_recover: {{ git_commit_ts }}"
+    git_commit_message: "{{ git_evidence.commit_prefix }}04_branch_acl_recover: {{ git_commit_ts }}"
     git_ssh_command: >-
-      ssh -o StrictHostKeyChecking=no
+      sshpass -e ssh -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
-      -i {{ git_evidence.ssh_key }}
   tasks:
-    - name: Push evidence repository (branch acl recover)
+    - name: Push evidence repository (branch acl policy switch)
       ansible.builtin.import_tasks: includes/git_evidence_push.yml

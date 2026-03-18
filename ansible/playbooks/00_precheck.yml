@@ -62,25 +62,22 @@
   gather_facts: no
   vars:
     git_ssh_command: >-
-      ssh -o StrictHostKeyChecking=no
+      sshpass -e ssh -o StrictHostKeyChecking=no
       -o UserKnownHostsFile=/dev/null
-      -i {{ git_evidence.ssh_key }}
   tasks:
-    - name: Chmod 600 ssh key
-      ansible.builtin.command:
-        cmd: "chmod 600 {{ git_evidence.ssh_key }}"
-      changed_when: false
-
     - name: Check SSH authentication to git server
       ansible.builtin.command:
-        cmd: "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -i {{ git_evidence.ssh_key }} git@172.20.20.200 true"
+        cmd: "sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {{ git_evidence.ssh_user }}@172.20.20.200 true"
       changed_when: false
+      environment:
+        SSHPASS: "{{ git_evidence.ssh_password }}"
 
     - name: Check repository reachability
       ansible.builtin.command:
         cmd: "git ls-remote {{ git_evidence.repo_url }}"
       changed_when: false
       environment:
+        SSHPASS: "{{ git_evidence.ssh_password }}"
         GIT_SSH_COMMAND: "{{ git_ssh_command }}"
 
 - name: Precheck - Client reachability matrix (SSH)
