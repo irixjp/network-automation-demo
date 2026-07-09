@@ -37,7 +37,7 @@
     method: POST
     validate_certs: false
     headers:
-      X-Redmine-API-Key: "{{ redmine_api_key }}"
+      X-Redmine-API-Key: "{{ lookup('ansible.builtin.env', 'common_api_key') }}"
     body_format: json
     body:
       issue:
