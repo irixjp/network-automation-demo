@@ -112,3 +112,5 @@
   tasks:
     - name: Push evidence repository (branch acl policy switch)
       ansible.builtin.import_tasks: includes/git_evidence_push.yml
+    - name: Post evidence diff to Redmine
+      ansible.builtin.import_tasks: includes/git_evidence_diff_redmine.yml

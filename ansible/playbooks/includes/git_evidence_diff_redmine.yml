@@ -1,0 +1,59 @@
+---
+- name: Skip Redmine notification
+  ansible.builtin.debug:
+    msg: "Skipping Redmine notification (no changes or redmine_server_url not defined)"
+  when: git_status.stdout == "" or redmine_server_url is not defined
+
+- name: Check if previous commit exists
+  ansible.builtin.command:
+    cmd: git rev-parse --verify HEAD~
+    chdir: "{{ git_evidence.repo_dir }}"
+  register: git_prev_commit
+  changed_when: false
+  failed_when: false
+  when: git_status.stdout != "" and redmine_server_url is defined
+
+- name: Get config diff from previous commit
+  ansible.builtin.command:
+    cmd: git diff HEAD~
+    chdir: "{{ git_evidence.repo_dir }}"
+  register: git_diff_output
+  changed_when: false
+  when: git_status.stdout != "" and redmine_server_url is defined and git_prev_commit.rc == 0
+
+- name: Set diff results
+  ansible.builtin.set_fact:
+    git_diff_results: "{{ git_diff_output.stdout }}"
+  when: git_status.stdout != "" and redmine_server_url is defined and git_prev_commit.rc == 0
+
+- name: Set diff results for initial commit
+  ansible.builtin.set_fact:
+    git_diff_results: "初回コミットのため差分はありません。"
+  when: git_status.stdout != "" and redmine_server_url is defined and git_prev_commit.rc != 0
+
+- name: Post config diff to Redmine
+  ansible.builtin.uri:
+    url: "{{ redmine_server_url }}/issues.json"
+    method: POST
+    validate_certs: false
+    headers:
+      X-Redmine-API-Key: "{{ redmine_api_key }}"
+    body_format: json
+    body:
+      issue:
+        project_id: "{{ project_id }}"
+        tracker_id: "{{ tracker_id }}"
+        subject: "ネットワークコンフィグの差分検出 {{ git_commit_ts }}"
+        description: "{{ git_diff_results }}"
+    return_content: yes
+    status_code:
+      - 200
+      - 201
+    timeout: 5
+  register: redmine_issue_result
+  when: git_status.stdout != "" and redmine_server_url is defined
+
+- name: Show Redmine issue result
+  ansible.builtin.debug:
+    var: redmine_issue_result
+  when: git_status.stdout != "" and redmine_server_url is defined
