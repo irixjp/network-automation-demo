@@ -23,7 +23,7 @@
 
 - name: Set diff results
   ansible.builtin.set_fact:
-    git_diff_results: "{{ git_diff_output.stdout }}"
+    git_diff_results: "```diff\n{{ git_diff_output.stdout }}\n```"
   when: git_status.stdout != "" and redmine_server_url is defined and git_prev_commit.rc == 0
 
 - name: Set diff results for initial commit
