@@ -52,10 +52,10 @@
         match: none
         replace: block
 
-    - name: Apply ACL outbound on WAN interfaces
+    - name: Apply ACL inbound on Guest subinterface
       arista.eos.eos_config:
         lines:
-          - "ip access-group {{ acl.name }} out"
+          - "ip access-group {{ acl.name }} in"
         parents: "{{ item }}"
       loop: "{{ acl.apply_interfaces }}"
 
